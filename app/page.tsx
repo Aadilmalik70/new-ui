@@ -130,7 +130,7 @@ export default function SEODashboard() {
 
     setIsLoading(true)
     try {
-      const response = await fetch("http://144.24.104.158/api/process", {
+      const response = await fetch("https://app.serpstrategists.com/api/process", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
