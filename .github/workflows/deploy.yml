@@ -14,25 +14,28 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up SSH Agent
-      # This action securely adds your SSH private key to the SSH agent on the runner
       uses: webfactory/ssh-agent@v0.9.0
       with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} # Uses the secret from *this* repository
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Add Server to Known Hosts
-      # Prevents SSH from asking "Are you sure you want to continue connecting?"
       run: |
         mkdir -p ~/.ssh
-        # IMPORTANT: Replace 144.24.104.158 with your actual server IP or domain name
         ssh-keyscan 144.24.104.158 >> ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
 
     - name: Deploy Frontend to Server via SSH
-      # Connects to your server, pulls the latest frontend code, rebuilds, and restarts PM2
-      # IMPORTANT: Replace 'ubuntu@144.24.104.158' with your actual SSH user and server IP/domain
       run: |
         echo "Starting Next.js frontend deployment..."
         ssh ubuntu@144.24.104.158 "
+          # --- BEGIN NVM SETUP FOR CI/CD ---
+          # This ensures nvm is loaded for the non-interactive SSH session
+          export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && \\. \"\$NVM_DIR/nvm.sh\"
+          # Explicitly tell nvm to use Node.js version 20 for this session
+          nvm use 20
+          # --- END NVM SETUP FOR CI/CD ---
+
+          # Now proceed with your deployment commands, which will use Node.js v20
           cd /var/www/projects/new-ui && \
           git pull origin main && \
           npm install --legacy-peer-deps && \
@@ -40,5 +43,3 @@ jobs:
           pm2 restart nextjs-app
         "
         echo "Next.js frontend deployment complete."
-        # Optionally restart Nginx here if frontend changes *always* require it
-        # ssh ubuntu@144.24.104.158 "sudo systemctl restart nginx"
