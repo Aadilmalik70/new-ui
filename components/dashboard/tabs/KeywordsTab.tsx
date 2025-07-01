@@ -1,174 +1,193 @@
-import { TrendingUp, TrendingDown, MoreHorizontal } from "lucide-react"
+import { TrendingUp, Target, Hash } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
-interface KeywordMetric {
+interface BlueprintAPIResponse {
+  blueprint_id: string
   keyword: string
-  search_volume: number
-  competition: number
-  competition_level: string
-  cpc: number
-  difficulty: number
-  opportunity: number
-  trend_data: {
-    monthly_data: Record<string, number>
-    trend_direction: string
-    year_over_year_change: string
-  }
-  serp_features: {
-    featured_snippet: boolean
-    people_also_ask: boolean
-    images: boolean
-    videos: boolean
-  }
-  total_results: number
-}
-
-interface APIResponse {
-  keyword_data: {
-    keyword_metrics: KeywordMetric[]
-    related_keywords: KeywordMetric[]
+  status: string
+  generation_time: number
+  created_at: string
+  data: {
+    keyword: string
+    topic_clusters: {
+      primary_cluster: string[]
+      related_keywords: string[]
+      secondary_clusters: Record<string, string[]>
+    }
+    competitor_analysis: {
+      insights: {
+        common_topics: string[]
+        content_length: {
+          average: number
+          count: number
+          max: number
+          min: number
+        }
+        sentiment_trend: string
+      }
+    }
   }
 }
 
 interface KeywordsTabProps {
-  apiData: APIResponse | null
+  apiData: BlueprintAPIResponse | null
 }
 
 export function KeywordsTab({ apiData }: KeywordsTabProps) {
-  const primaryKeyword = apiData?.keyword_data?.keyword_metrics?.[0]
+  const topicClusters = apiData?.data?.topic_clusters
+  const competitorInsights = apiData?.data?.competitor_analysis?.insights
+  const targetKeyword = apiData?.keyword
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Primary Keyword Analysis</CardTitle>
-          <CardDescription>Detailed metrics for your target keyword</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Target Keyword Analysis
+          </CardTitle>
+          <CardDescription>Primary keyword and strategic insights</CardDescription>
         </CardHeader>
         <CardContent>
-          {primaryKeyword ? (
+          {targetKeyword ? (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="text-center bg-blue-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    {primaryKeyword.search_volume?.toLocaleString() || "N/A"}
+                    "{targetKeyword}"
                   </div>
-                  <div className="text-sm text-slate-600">Monthly Volume</div>
+                  <div className="text-sm text-slate-600 mt-1">Target Keyword</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">
-                    ${primaryKeyword.cpc?.toFixed(2) || "N/A"}
-                  </div>
-                  <div className="text-sm text-slate-600">Avg CPC</div>
-                </div>
-                <div className="text-center">
+                <div className="text-center bg-green-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
-                    {primaryKeyword.competition_level || "N/A"}
+                    {competitorInsights?.content_length?.average ? 
+                      Math.round(competitorInsights.content_length.average).toLocaleString() 
+                      : "N/A"}
                   </div>
-                  <div className="text-sm text-slate-600">Competition</div>
+                  <div className="text-sm text-slate-600 mt-1">Avg. Content Length</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center bg-purple-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-purple-600">
-                    {primaryKeyword.total_results?.toLocaleString() || "N/A"}
+                    {competitorInsights?.sentiment_trend || "N/A"}
                   </div>
-                  <div className="text-sm text-slate-600">Total Results</div>
+                  <div className="text-sm text-slate-600 mt-1">Market Sentiment</div>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {primaryKeyword.serp_features?.featured_snippet && (
-                  <Badge variant="secondary">Featured Snippets</Badge>
-                )}
-                {primaryKeyword.serp_features?.people_also_ask && (
-                  <Badge variant="secondary">People Also Ask</Badge>
-                )}
-                {primaryKeyword.serp_features?.images && <Badge variant="secondary">Images</Badge>}
-                {primaryKeyword.serp_features?.videos && <Badge variant="secondary">Videos</Badge>}
-              </div>
+              
+              {competitorInsights?.common_topics && (
+                <div>
+                  <h3 className="font-semibold mb-3">Common Topics in Competitor Content</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {competitorInsights.common_topics.map((topic, index) => (
+                      <Badge key={index} variant="outline" className="bg-yellow-50 text-yellow-800">
+                        {topic}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
-            <p className="text-slate-500">No primary keyword data available</p>
+            <p className="text-slate-500">No target keyword data available</p>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      {topicClusters && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Hash className="h-5 w-5" />
+              Keyword Strategy & Topic Clusters
+            </CardTitle>
+            <CardDescription>Strategically related keywords and topic groupings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Primary Clusters */}
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                Primary Focus Areas
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {topicClusters.primary_cluster.map((cluster, index) => (
+                  <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="font-medium text-green-800">{cluster}</div>
+                    <div className="text-sm text-green-600 mt-1">Primary Cluster</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Related Keywords */}
+            <div>
+              <h3 className="font-semibold mb-3">Related Keywords</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {topicClusters.related_keywords.map((keyword, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="justify-center p-2 text-center bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    {keyword}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Secondary Clusters */}
+            {Object.keys(topicClusters.secondary_clusters).length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-4">Secondary Topic Areas</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(topicClusters.secondary_clusters).map(([category, keywords]) => (
+                    <Card key={category} className="border-slate-200">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base text-slate-700">{category}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-1">
+                          {keywords.map((keyword, index) => (
+                            <Badge 
+                              key={index} 
+                              variant="outline" 
+                              className="text-xs bg-slate-50 text-slate-600"
+                            >
+                              {keyword}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Strategy Recommendations */}
+      <Card className="border-indigo-200 bg-indigo-50">
         <CardHeader>
-          <CardTitle>Related Keywords</CardTitle>
-          <CardDescription>Discover related keywords and their metrics</CardDescription>
+          <CardTitle className="text-indigo-800">💡 Keyword Strategy Recommendations</CardTitle>
         </CardHeader>
         <CardContent>
-          {apiData?.keyword_data?.related_keywords && apiData.keyword_data.related_keywords.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Keyword</TableHead>
-                  <TableHead>Volume</TableHead>
-                  <TableHead>Competition</TableHead>
-                  <TableHead>CPC</TableHead>
-                  <TableHead>Opportunity</TableHead>
-                  <TableHead>Trend</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {apiData.keyword_data.related_keywords.map((keyword, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{keyword.keyword}</TableCell>
-                    <TableCell>{keyword.search_volume?.toLocaleString() || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          keyword.competition_level === "High"
-                            ? "destructive"
-                            : keyword.competition_level === "Medium"
-                              ? "default"
-                              : "secondary"
-                        }
-                      >
-                        {keyword.competition_level || 'N/A'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>${keyword.cpc?.toFixed(2) || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Progress value={keyword.opportunity || 0} className="w-16" />
-                        <span className="text-sm">{keyword.opportunity || 'N/A'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {keyword.trend_data?.trend_direction === "up" ? (
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                      ) : keyword.trend_data?.trend_direction === "down" ? (
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                      ) : (
-                        <div className="h-4 w-4 bg-slate-300 rounded-full" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem>Add to favorites</DropdownMenuItem>
-                          <DropdownMenuItem>Export keyword</DropdownMenuItem>
-                          <DropdownMenuItem>View SERP</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-slate-500">No related keywords data available</p>
-          )}
+          <ul className="space-y-2 text-sm text-indigo-700">
+            <li>✅ Focus on primary clusters for main content sections</li>
+            <li>✅ Use related keywords naturally throughout your content</li>
+            <li>✅ Address common competitor topics to ensure competitive coverage</li>
+            <li>✅ Create separate content pieces for each secondary topic area</li>
+            <li>✅ Target content length around {competitorInsights?.content_length?.average ? 
+              Math.ceil(competitorInsights.content_length.average * 1.1).toLocaleString() 
+              : "industry average"} words</li>
+          </ul>
         </CardContent>
       </Card>
     </>

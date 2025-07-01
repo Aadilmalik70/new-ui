@@ -19,93 +19,121 @@ import { SerpTab } from "@/components/dashboard/tabs/SerpTab"
 import { PredictionsTab } from "@/components/dashboard/tabs/PredictionsTab"
 import { PlanningTab } from "@/components/dashboard/tabs/PlanningTab"
 
-// Types for API response
-interface KeywordMetric {
-  keyword: string
-  search_volume: number
-  competition: number
-  competition_level: string
-  cpc: number
-  difficulty: number
-  opportunity: number
-  trend_data: {
-    monthly_data: Record<string, number>
-    trend_direction: string
-    year_over_year_change: string
+// Types for new Blueprint API response
+interface CompetitorData {
+  domain: string
+  title: string
+  url: string
+  position: number
+  content_length: number
+  keyword_usage: {
+    count: number
+    density: number
+    in_title: boolean
+    in_meta: boolean
+    in_h1: boolean
   }
-  serp_features: {
-    featured_snippet: boolean
-    people_also_ask: boolean
-    images: boolean
-    videos: boolean
+  readability: {
+    flesch_score: number
+    reading_level: string
+    avg_sentence_length: number
+    word_count: number
   }
-  total_results: number
+  sentiment: {
+    score: number
+    magnitude: number
+    overall?: string
+  }
+  entities: Array<{
+    name: string
+    salience: number
+    type: string
+    mentions?: number
+  }>
+  content_structure: {
+    heading_structure: Record<string, number>
+    paragraph_count: number
+    list_count: number
+    image_count: number
+    internal_link_count: number
+    external_link_count: number
+  }
 }
 
-interface APIResponse {
-  keyword_data: {
-    keyword_metrics: KeywordMetric[]
-    related_keywords: KeywordMetric[]
-  }
-  content_blueprint: {
+interface HeadingStructure {
+  h1: string
+  h2_sections: Array<{
+    title: string
+    h3_subsections: string[]
+  }>
+}
+
+interface SerpFeatureRecommendation {
+  feature: string
+  opportunity: string
+  status: string
+  recommendations: string[]
+}
+
+interface BlueprintAPIResponse {
+  blueprint_id: string
+  keyword: string
+  status: string
+  generation_time: number
+  created_at: string
+  data: {
     keyword: string
-    recommendations: string[]
-    outline: {
-      title: string
-      sections: Array<{
-        heading: string
-        subsections: string[]
+    competitor_analysis: {
+      keyword: string
+      competitors: CompetitorData[]
+      insights: {
+        common_topics: string[]
+        content_length: {
+          average: number
+          count: number
+          max: number
+          min: number
+        }
+        sentiment_trend: string
+        data_quality: {
+          competitors_analyzed: number
+          content_samples: number
+          entities_extracted: number
+          failed_competitors: number
+          sentiment_samples: number
+          success_rate: number
+          successful_competitors: number
+        }
+      }
+    }
+    heading_structure: HeadingStructure
+    topic_clusters: {
+      primary_cluster: string[]
+      related_keywords: string[]
+      secondary_clusters: Record<string, string[]>
+    }
+    serp_features: {
+      keyword: string
+      recommendations: SerpFeatureRecommendation[]
+      serp_features: Array<{
+        name: string
+        presence: string
+        data: any
       }>
     }
-    competitor_insights: {
-      common_topics: string[]
-      content_length: {
-        average: number
-        count: number
-        max: number
-        min: number
-      }
-      sentiment_trend: string
+    content_insights: {
+      analysis_status: string
+      avg_word_count: number
+      common_sections: string[]
+      content_gaps: string[]
+      structural_patterns: Record<string, any>
     }
-    data_quality: {
-      competitors_analyzed: number
-      content_samples: number
-      entities_extracted: number
-      failed_competitors: number
-      sentiment_samples: number
-      success_rate: number
-      successful_competitors: number
+    generation_metadata: {
+      components_used: string[]
+      created_at: string
+      generation_time: number
+      version: string
     }
-  }
-  optimization_recommendations: {
-    recommendations: Array<{
-      feature: string
-      status: string
-      opportunity: string
-      recommendations: string[]
-    }>
-    serp_features: Array<{
-      name: string
-      presence: string
-      data: any
-    }>
-  }
-  performance_prediction: {
-    estimated_serp_position: number
-    estimated_ctr: number
-    estimated_traffic: number
-    confidence_score: number
-    ranking_factors: Array<{
-      factor_name: string
-      score: number
-      description: string
-    }>
-    improvement_suggestions: Array<{
-      area: string
-      effort: string
-      impact: string
-      suggestion: string
-    }>
   }
 }
 
@@ -113,7 +141,7 @@ export default function SEODashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("ai powered seo tools")
   const [domain, setDomain] = useState("")
-  const [apiData, setApiData] = useState<APIResponse | null>(null)
+  const [apiData, setApiData] = useState<BlueprintAPIResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
@@ -130,17 +158,18 @@ export default function SEODashboard() {
 
     setIsLoading(true)
     try {
-      const response = await fetch("https://app.serpstrategists.com/api/process", {
+      const response = await fetch("https://app.serpstrategists.com/api/blueprints/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-User-ID": "test-user-1", // Required header for blueprint API
         },
         mode: "cors",
         credentials: "omit",
         body: JSON.stringify({
-          input: searchQuery,
-          domain: domain,
+          keyword: searchQuery,
+          project_id: domain || undefined, // Use domain as project_id if provided
         }),
       })
 
@@ -149,7 +178,7 @@ export default function SEODashboard() {
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
-      const data: APIResponse = await response.json()
+      const data: BlueprintAPIResponse = await response.json()
       setApiData(data)
       toast({
         title: "Success",
@@ -180,267 +209,152 @@ export default function SEODashboard() {
     }
   }
 
-  // Load sample data (using actual JSON structure provided)
+  // Load sample data using new blueprint API format
   const loadSampleData = () => {
-    const sampleData: APIResponse = {
-      keyword_data: {
-        keyword_metrics: [
-          {
-            keyword: "ai powered seo tools",
-            search_volume: 7435,
-            competition: 0.3,
-            competition_level: "Low",
-            cpc: 2.71,
-            difficulty: 39,
-            opportunity: 67,
-            trend_data: {
-              monthly_data: {
-                "2024-11": 515,
-                "2024-12": 451,
-                "2025-01": 531,
-                "2025-02": 470,
-                "2025-03": 461,
-                "2025-04": 441,
-              },
-              trend_direction: "down",
-              year_over_year_change: "12%",
-            },
-            serp_features: {
-              featured_snippet: false,
-              people_also_ask: false,
-              images: false,
-              videos: false,
-            },
-            total_results: 52100000,
-          },
-        ],
-        related_keywords: [
-          {
-            keyword: "ai powered seo tools tools",
-            search_volume: 7286,
-            competition: 0.3,
-            competition_level: "Low",
-            cpc: 2.04,
-            difficulty: 30,
-            opportunity: 70,
-            trend_data: {
-              monthly_data: {
-                "2024-11": 659,
-                "2024-12": 633,
-                "2025-01": 654,
-                "2025-02": 690,
-                "2025-03": 878,
-                "2025-04": 877,
-              },
-              trend_direction: "up",
-              year_over_year_change: "-6%",
-            },
-            serp_features: {
-              featured_snippet: false,
-              people_also_ask: false,
-              images: false,
-              videos: false,
-            },
-            total_results: 81300000,
-          },
-          {
-            keyword: "best ai powered seo tools",
-            search_volume: 3258,
-            competition: 0.3,
-            competition_level: "Low",
-            cpc: 2.52,
-            difficulty: 30,
-            opportunity: 70,
-            trend_data: {
-              monthly_data: {
-                "2024-11": 314,
-                "2024-12": 364,
-                "2025-01": 351,
-                "2025-02": 362,
-                "2025-03": 414,
-                "2025-04": 465,
-              },
-              trend_direction: "up",
-              year_over_year_change: "-17%",
-            },
-            serp_features: {
-              featured_snippet: false,
-              people_also_ask: false,
-              images: false,
-              videos: false,
-            },
-            total_results: 49400000,
-          },
-        ],
-      },
-      content_blueprint: {
-        keyword: "ai powered seo tools",
-        recommendations: [
-          "Create an \"Ultimate Guide\" or Comprehensive Resource:** The enormous average content length suggests that users searching for \"ai powered seo tools\" are looking for incredibly in-depth, comprehensive resources. Create a guide that leaves no stone unturned.",
-          "Actionable Recommendation:** Develop an \"Ultimate Guide to AI-Powered SEO Tools\" covering topics from basic definitions and principles to advanced strategies and tool comparisons. Break it down into chapters/sections with a table of contents for easy navigation. Aim for at least 40,000 words, exceeding the average to establish authority.",
-          "Develop a Comparative Review Matrix:** With users seeking detailed information, a simple listicle won't cut it. A comparative review matrix lets them see the strengths and weaknesses of each tool side-by-side.",
-          "Actionable Recommendation:**  Create a detailed table comparing 10-15 of the most popular AI-powered SEO tools across key features (keyword research, content optimization, link building, reporting), pricing, ease of use, integrations, customer support, and overall effectiveness.  Include screenshots and user testimonials to support your assessments.",
-          "Incorporate Case Studies and Real-World Examples:** The positive sentiment suggests people are receptive to seeing *how* these tools deliver value.",
-          "Actionable Recommendation:**  Feature 3-5 in-depth case studies showcasing how specific businesses or individuals have achieved significant SEO results using AI-powered tools. Quantify the results with metrics like organic traffic growth, keyword ranking improvements, and conversion rate increases. Obtain permission and quote the users/business owners when possible.",
-          "Address Advanced AI SEO Techniques and Future Trends:** Focus on the cutting edge to differentiate your content. Don't just describe *what* AI SEO tools do, but *how* to use them for complex strategies and what to expect in the future."
-        ],
-        outline: {
-          title: "**1. Introduction: The AI Revolution in SEO is Here**",
-          sections: [
+    const sampleData: BlueprintAPIResponse = {
+      blueprint_id: "sample-blueprint-123",
+      keyword: searchQuery,
+      status: "completed",
+      generation_time: 119,
+      created_at: new Date().toISOString(),
+      data: {
+        keyword: searchQuery,
+        competitor_analysis: {
+          keyword: searchQuery,
+          competitors: [
             {
-              heading: "Content Outline: Unleash SEO Power: A Deep Dive into AI-Powered Tools",
-              subsections: []
+              domain: "example.com",
+              title: "Best AI-Powered SEO Tools 2025",
+              url: "https://example.com/ai-seo-tools",
+              position: 1,
+              content_length: 45000,
+              keyword_usage: {
+                count: 15,
+                density: 0.02,
+                in_title: true,
+                in_meta: true,
+                in_h1: true
+              },
+              readability: {
+                flesch_score: 65,
+                reading_level: "College",
+                avg_sentence_length: 18,
+                word_count: 4500
+              },
+              sentiment: {
+                score: 0.7,
+                magnitude: 15.2,
+                overall: "positive"
+              },
+              entities: [
+                { name: "SEO", salience: 0.8, type: "TECHNOLOGY", mentions: 45 },
+                { name: "AI", salience: 0.75, type: "TECHNOLOGY", mentions: 38 }
+              ],
+              content_structure: {
+                heading_structure: { h1: 1, h2: 8, h3: 15 },
+                paragraph_count: 35,
+                list_count: 5,
+                image_count: 12,
+                internal_link_count: 18,
+                external_link_count: 8
+              }
+            }
+          ],
+          insights: {
+            common_topics: ["seo", "ai", "tools", "optimization", "content"],
+            content_length: {
+              average: 43878,
+              count: 8,
+              max: 113802,
+              min: 1196
+            },
+            sentiment_trend: "Positive",
+            data_quality: {
+              competitors_analyzed: 10,
+              content_samples: 8,
+              entities_extracted: 109,
+              failed_competitors: 2,
+              sentiment_samples: 8,
+              success_rate: 80,
+              successful_competitors: 8
+            }
+          }
+        },
+        heading_structure: {
+          h1: "Ultimate Guide to AI-Powered SEO Tools",
+          h2_sections: [
+            {
+              title: "What are AI-Powered SEO Tools?",
+              h3_subsections: ["Definition and Core Features", "How AI Enhances SEO", "Benefits for Businesses"]
+            },
+            {
+              title: "Top AI SEO Tools in 2025",
+              h3_subsections: ["Tool Comparison Matrix", "Pricing Analysis", "Feature Breakdown"]
+            },
+            {
+              title: "Implementation Strategy",
+              h3_subsections: ["Getting Started", "Best Practices", "Measuring Success"]
             }
           ]
         },
-        competitor_insights: {
-          common_topics: ["seo", "semrush", "content", "ai", "seo content"],
-          content_length: {
-            average: 43878.625,
-            count: 8,
-            max: 113802,
-            min: 1196
-          },
-          sentiment_trend: "Positive"
-        },
-        data_quality: {
-          competitors_analyzed: 10,
-          content_samples: 8,
-          entities_extracted: 109,
-          failed_competitors: 2,
-          sentiment_samples: 8,
-          success_rate: 80,
-          successful_competitors: 8
-        }
-      },
-      optimization_recommendations: {
-        recommendations: [
-          {
-            feature: "featured_snippets",
-            opportunity: "medium",
-            status: "Not present in current SERP",
-            recommendations: [
-              "Structure content with clear headings and concise paragraphs",
-              "Answer the query directly and succinctly at the beginning",
-              "Use lists, tables, or step-by-step formats where appropriate",
-              "Include the target keyword in the heading and first paragraph",
-              "Keep answers between 40-60 words for optimal snippet length"
-            ]
+        topic_clusters: {
+          primary_cluster: ["AI SEO Tools", "SEO Automation", "Content Optimization"],
+          related_keywords: ["automated seo", "ai content optimization", "seo software", "keyword research tools"],
+          secondary_clusters: {
+            "Tool Features": ["keyword research", "content analysis", "rank tracking", "competitor analysis"],
+            "Benefits": ["time savings", "accuracy improvement", "data insights", "automation"]
           }
-        ],
-        serp_features: [
-          {
-            name: "featured_snippets",
-            presence: "none",
-            data: { presence: "none" }
-          },
-          {
-            name: "people_also_ask",
-            presence: "strong",
-            data: {
-              presence: "strong",
-              count: 4,
-              data: [
-                {
-                  question: "Is there an AI tool for SEO?",
-                  snippet: "Alli AI is an AI-powered SEO optimization tool designed for agencies and teams that automates technical and on-page SEO optimization. It analyzes your website and detects search engine optimization issues.",
-                  title: "8 AI SEO Tools We Absolutely Love Using in 2025 - Backlinko",
-                  date: "May 15, 2025",
-                  link: "https://backlinko.com/ai-seo-tools"
-                },
-                {
-                  question: "Is SEO possible with AI?",
-                  snippet: "While traditional SEO remains essential, AI enhances it, offering automation and data mining to increase productivity and unlock new value in the organic channel.",
-                  title: "What Exactly is AI in SEO? - BrightEdge",
-                  date: "Mar 21, 2025",
-                  link: "https://www.brightedge.com/glossary/how-has-ai-changed-search-marketing"
-                },
-                {
-                  question: "Can ChatGPT do SEO?",
-                  snippet: "ChatGPT can help with various SEO tasks including content generation, keyword research, and optimization suggestions, but should be used as a tool alongside human expertise.",
-                  title: "AI Overview",
-                  link: "https://www.youtube.com/watch?v=QKvVCZV_M6o"
-                },
-                {
-                  question: "Can Google detect AI SEO?",
-                  snippet: "Detection: Yes, Google (and various third-party tools) can often detect patterns indicative of AI generation, especially if the content is used straight out-of-the-box with no human refinement.",
-                  title: "Can Google Detect AI Content: Tips to Avoid Penalization - Boostability",
-                  date: "May 22, 2025",
-                  link: "https://www.boostability.com/content/can-google-detect-ai-content/"
-                }
+        },
+        serp_features: {
+          keyword: searchQuery,
+          recommendations: [
+            {
+              feature: "featured_snippets",
+              opportunity: "medium",
+              status: "Not present in current SERP",
+              recommendations: [
+                "Structure content with clear headings and concise paragraphs",
+                "Answer the query directly and succinctly at the beginning",
+                "Use lists, tables, or step-by-step formats where appropriate"
               ]
             }
+          ],
+          serp_features: [
+            {
+              name: "people_also_ask",
+              presence: "strong",
+              data: {
+                presence: "strong",
+                count: 4,
+                data: [
+                  {
+                    question: "Is there an AI tool for SEO?",
+                    snippet: "Yes, there are many AI-powered SEO tools available that can automate various SEO tasks.",
+                    title: "AI SEO Tools Guide",
+                    link: "https://example.com/ai-seo-guide"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        content_insights: {
+          analysis_status: "completed",
+          avg_word_count: 4500,
+          common_sections: ["Introduction", "Tool Reviews", "Comparison", "Conclusion"],
+          content_gaps: ["Case studies", "ROI analysis", "Implementation tutorials"],
+          structural_patterns: {
+            "heading_depth": "3_levels",
+            "list_usage": "frequent",
+            "image_placement": "strategic"
           }
-        ]
-      },
-      performance_prediction: {
-        estimated_serp_position: 11.2,
-        estimated_ctr: 0.5,
-        estimated_traffic: 15,
-        confidence_score: 79,
-        ranking_factors: [
-          {
-            factor_name: "User Intent Match",
-            score: 0.92,
-            description: "Content aligns well with the primary user intent for target queries."
-          },
-          {
-            factor_name: "Semantic Relevance",
-            score: 0.67,
-            description: "Content demonstrates strong semantic relevance to the topic."
-          },
-          {
-            factor_name: "Keyword Optimization",
-            score: 0.72,
-            description: "Content is well-optimized for target keywords without over-optimization."
-          },
-          {
-            factor_name: "Content Structure",
-            score: 0.74,
-            description: "Content is well-structured with appropriate headings and organization."
-          },
-          {
-            factor_name: "Mobile Optimization",
-            score: 0.85,
-            description: "Content is well-optimized for mobile devices."
-          },
-          {
-            factor_name: "Entity Coverage",
-            score: 0.86,
-            description: "Content covers important entities related to the topic."
-          },
-          {
-            factor_name: "Content Freshness",
-            score: 0.78,
-            description: "Content appears fresh and up-to-date."
-          }
-        ],
-        improvement_suggestions: [
-          {
-            area: "Schema Markup",
-            effort: "Low",
-            impact: "Medium",
-            suggestion: "Implement additional schema markup types to enhance SERP appearance and click-through rates."
-          },
-          {
-            area: "Multimedia Enhancement",
-            effort: "Medium",
-            impact: "Medium",
-            suggestion: "Add more visual elements such as infographics, charts, and videos to improve engagement and time on page."
-          },
-          {
-            area: "Topical Authority",
-            effort: "High",
-            impact: "High",
-            suggestion: "Develop additional supporting content to establish stronger topical authority in this subject area."
-          },
-          {
-            area: "Semantic Relevance",
-            effort: "Medium",
-            impact: "Medium",
-            suggestion: "Improve this area to enhance overall performance."
-          }
-        ]
+        },
+        generation_metadata: {
+          components_used: ["competitor_analysis", "content_analysis", "serp_optimization"],
+          created_at: new Date().toISOString(),
+          generation_time: 119,
+          version: "1.0"
+        }
       }
     }
 
@@ -452,8 +366,33 @@ export default function SEODashboard() {
     })
   }
 
-  // Get primary keyword data
-  const primaryKeyword = apiData?.keyword_data?.keyword_metrics?.[0]
+  // Get data from new blueprint structure
+  const blueprintData = apiData?.data
+  const competitorAnalysis = blueprintData?.competitor_analysis
+  const headingStructure = blueprintData?.heading_structure
+  const topicClusters = blueprintData?.topic_clusters
+  const serpFeatures = blueprintData?.serp_features
+  
+  // Create mock primary keyword data for existing components
+  const primaryKeyword = {
+    keyword: apiData?.keyword || searchQuery,
+    search_volume: 7435, // Mock data - you may want to add this to blueprint API
+    competition: 0.3,
+    difficulty: 39,
+    opportunity: 67,
+    trend_data: {
+      monthly_data: {
+        "2024-11": 515,
+        "2024-12": 451,
+        "2025-01": 531,
+        "2025-02": 470,
+        "2025-03": 461,
+        "2025-04": 441,
+      },
+      trend_direction: "stable",
+      year_over_year_change: "5%"
+    }
+  }
 
   // Transform trend data for chart
   const trendData = primaryKeyword?.trend_data?.monthly_data
@@ -463,8 +402,8 @@ export default function SEODashboard() {
       }))
     : []
 
-  // Get People Also Ask data
-  const paaFeature = apiData?.optimization_recommendations?.serp_features?.find(
+  // Get People Also Ask data from new structure
+  const paaFeature = serpFeatures?.serp_features?.find(
     feature => feature.name === "people_also_ask"
   )
   const paaData = paaFeature?.data?.data
@@ -510,8 +449,8 @@ export default function SEODashboard() {
               <TrendChart trendData={trendData} keyword={primaryKeyword?.keyword} />
 
               <CompetitorInsightsSection 
-                competitorInsights={apiData?.content_blueprint?.competitor_insights}
-                dataQuality={apiData?.content_blueprint?.data_quality}
+                competitorInsights={competitorAnalysis?.insights}
+                dataQuality={competitorAnalysis?.insights?.data_quality}
               />
             </TabsContent>
 
@@ -521,7 +460,9 @@ export default function SEODashboard() {
 
             <TabsContent value="content" className="space-y-6">
               <DetailedContentRecommendations 
-                recommendations={apiData?.content_blueprint?.recommendations}
+                headingStructure={headingStructure}
+                topicClusters={topicClusters}
+                competitorInsights={competitorAnalysis?.insights}
               />
             </TabsContent>
 
