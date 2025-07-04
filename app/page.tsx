@@ -18,6 +18,7 @@ import { KeywordsTab } from "@/components/dashboard/tabs/KeywordsTab"
 import { SerpTab } from "@/components/dashboard/tabs/SerpTab"
 import { PredictionsTab } from "@/components/dashboard/tabs/PredictionsTab"
 import { PlanningTab } from "@/components/dashboard/tabs/PlanningTab"
+import { isArray } from "util"
 
 // Types for new Blueprint API response
 interface CompetitorData {
@@ -158,7 +159,7 @@ export default function SEODashboard() {
 
     setIsLoading(true)
     try {
-      const response = await fetch("https://app.serpstrategists.com/api/blueprints/generate", {
+      const response = await fetch("http://localhost:5000/api/blueprints/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -402,11 +403,15 @@ export default function SEODashboard() {
       }))
     : []
 
+    console.log("Trend Data:", trendData,serpFeatures)  
   // Get People Also Ask data from new structure
-  const paaFeature = serpFeatures?.serp_features?.find(
-    feature => feature.name === "people_also_ask"
-  )
-  const paaData = paaFeature?.data?.data
+  if(serpFeatures?.serp_features){
+    
+  }
+  const paaFeature = Array.isArray(serpFeatures?.serp_features)
+    ? serpFeatures.serp_features.find(feature => feature.name === "people_also_ask")
+    : undefined;
+  const paaData = paaFeature?.data ? paaFeature?.data?.data :[]
 
   return (
     <div className="min-h-screen bg-slate-50">

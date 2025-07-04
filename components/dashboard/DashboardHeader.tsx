@@ -33,22 +33,9 @@ export function DashboardHeader({
             <div className="h-8 w-8 rounded bg-blue-600 flex items-center justify-center">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">SEOStrategy</span>
+            <span className="text-xl font-bold text-slate-900">SerpStrategists</span>
           </div>
-          <nav className="hidden md:flex space-x-6">
-            <Button variant="ghost" className="text-slate-600 hover:text-slate-900">
-              Dashboard
-            </Button>
-            <Button variant="ghost" className="text-slate-600 hover:text-slate-900">
-              Keywords
-            </Button>
-            <Button variant="ghost" className="text-slate-600 hover:text-slate-900">
-              Content
-            </Button>
-            <Button variant="ghost" className="text-slate-600 hover:text-slate-900">
-              Analytics
-            </Button>
-          </nav>
+          
         </div>
 
         {/* Search Bar */}
